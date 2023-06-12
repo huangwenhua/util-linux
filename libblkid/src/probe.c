@@ -1593,7 +1593,7 @@ int blkid_probe_step_back(blkid_probe pr)
  */
 int blkid_do_safeprobe(blkid_probe pr)
 {
-	int i, count = 0, rc = 0;
+	int i, count = 0, rc = 0, ambivalent = 0;
 
 	if (pr->flags & BLKID_FL_NOSCAN_DEV)
 		return BLKID_PROBE_NONE;
@@ -1620,8 +1620,12 @@ int blkid_do_safeprobe(blkid_probe pr)
 		blkid_probe_chain_reset_position(chn);
 
 		/* rc: -2 ambivalent, -1 = error, 0 = success, 1 = no result */
-		if (rc < 0)
-			goto done;	/* error */
+		if (rc < 0) {
+			if (rc == BLKID_PROBE_AMBIGUOUS)
+				ambivalent = BLKID_PROBE_AMBIGUOUS;
+			else
+				goto done;	/* error */
+		}
 		if (rc == 0)
 			count++;	/* success */
 	}
@@ -1630,6 +1634,8 @@ done:
 	blkid_probe_end(pr);
 	if (rc < 0)
 		return BLKID_PROBE_ERROR;
+	if (ambivalent < 0)
+		return BLKID_PROBE_AMBIGUOUS;
 
 	return count == 0 ? BLKID_PROBE_NONE : BLKID_PROBE_OK;
 }
